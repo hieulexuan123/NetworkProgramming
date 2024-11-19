@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <mutex>
 #include <sys/select.h>
+#include <chrono>
 #include "structure.h"
 #include "utilities.h"
 
@@ -25,11 +26,12 @@ mutex dbMutex;
 vector<struct ClientInfo *> player_list;
 struct Game game;
 
-string handleLoginRequest(const vector<string>& parts, bool& isLoggedIn, map<string, string> userDb);
-string handleRegisRequest(const vector<string>& parts, bool& isLoggedIn, map<string, string> userDb);
+string handleLoginRequest(const vector<string>& parts, bool& isLoggedIn);
+string handleRegisRequest(const vector<string>& parts, bool& isLoggedIn);
 void handleClient(struct ClientInfo * player);
 void askQuestionsLoop();
-void broadcast_quest(string question_text, vector<string> answer_texts, bool is_first_round);
+void broadcastQuest(string question_text, vector<string> answer_texts, int round);
+string handleAnsRequest(const vector<string>& parts, struct ClientInfo * player);
 
 int main (int argc, char **argv)
 {   
@@ -133,26 +135,69 @@ int main (int argc, char **argv)
     cout << "Stop accepting connections\n";
 }
 
-void broadcast_quest(string question_text, vector<string> answer_texts, bool is_first_round = false){
-    string send_msg = "QUEST;" + question_text;
-    for (string answer_text : answer_texts){
-        send_msg += ";" + answer_text;
-    }
-
+void broadcastQuest(string question_text, vector<string> answer_texts, int round){
     for (int i=0; i<player_list.size(); i++){
         //Only send message to logged in and ineliminated players
         if (player_list[i]->isLoggedIn && !player_list[i]->is_eliminated){
             int time_limit;
-            if (is_first_round){
+            string send_msg = "QUEST";
+
+            if (round==0){
                 time_limit = TIME_LIMIT_INITIAL;
             } else if (player_list[i]->is_main_player){
                 time_limit = TIME_LIMIT_MAIN;
             } else {
                 time_limit = TIME_LIMIT_SECOND;
             }
-            string send_msg_with_time = send_msg + ";" + to_string(time_limit);
-            if (send(player_list[i]->connfd, send_msg_with_time.c_str(), send_msg_with_time.length(), 0) < 0)
+            send_msg += ";" + to_string(round) + ";" + to_string(time_limit) + ";" + question_text;
+            for (string answer_text : answer_texts){
+                send_msg += ";" + answer_text;
+            }
+
+            if (send(player_list[i]->connfd, send_msg.c_str(), send_msg.length(), 0) < 0)
                 perror("[-] Failed to send message to client\n");
+        }
+    }
+}
+
+void broadcastResult(int round){
+    int time_shortest = INT_MAX;
+    int player_fastest_idx = -1;
+
+    for (int i=0; i<player_list.size(); i++){
+        struct ClientInfo * player = player_list[i];
+        if (player->isLoggedIn && !player->is_eliminated && game.correct_answer == player->submitted_answer && player->time_answer < time_shortest){
+            time_shortest = player->time_answer;
+            player_fastest_idx = i;
+        }
+    }
+
+    for (int i=0; i<player_list.size(); i++){
+        struct ClientInfo * player = player_list[i];
+        if (player->isLoggedIn && !player->is_eliminated){
+            string send_msg, status;
+            if (i == player_fastest_idx){
+                player->is_main_player = true;
+                player->point += 20;
+                status = "main";
+            } else if (game.correct_answer == player->submitted_answer){
+                player->is_main_player = false;
+                player->point += 10;
+                status = "second";
+            } else {
+                player->is_eliminated = true;
+                status = "eliminated";
+            }
+
+            cout << to_string(player->point) << endl;
+            send_msg = "RESULT;" + status + ";" + to_string(player->point);
+            
+            //Send result to clients
+            if (send(player->connfd, send_msg.c_str(), send_msg.length(), 0) < 0)
+                perror("[-] Failed to send message to client\n");
+
+            //Reset answer
+            player->submitted_answer = -1;
         }
     }
 }
@@ -170,20 +215,25 @@ void askQuestionsLoop(){
 
     game.correct_answer = 1;
     game.round = 0;
-
     cout << "Send question...\n";
-    broadcast_quest(question_text, answer_texts);
+    broadcastQuest(question_text, answer_texts, game.round);
+    game.ckpt_send_quest = std::chrono::system_clock::now();
+
+    std::this_thread::sleep_for(std::chrono::seconds(TIME_LIMIT_INITIAL));
+    cout << "Send result...\n";
+    broadcastResult(game.round);
+
 }
 
 void handleClient(struct ClientInfo * player){
     int connfd = player->connfd;
-    
     bool isLoggedIn = false;
+    char send_buffer[MAXLINE];
+    char recv_buffer[MAXLINE];
 
     while (true){
-        char send_buffer[MAXLINE];
-        char recv_buffer[MAXLINE];
-
+        memset(send_buffer, 0, sizeof(send_buffer));
+        memset(recv_buffer, 0, sizeof(recv_buffer));
         int recv_code = recv(connfd, recv_buffer, MAXLINE,0);
 
         if (recv_code == 0) {
@@ -204,13 +254,16 @@ void handleClient(struct ClientInfo * player){
         string recv_mess_str(recv_buffer);
         string send_mess_str;
         vector<string> parts = split(recv_mess_str, ";");
+        cout << recv_mess_str << endl;
         
         if (parts[0]=="REGIS"){
-            send_mess_str = handleRegisRequest(parts, isLoggedIn, userDb);
+            send_mess_str = handleRegisRequest(parts, isLoggedIn);
             player->isLoggedIn = isLoggedIn;
         } else if (parts[0]=="LOGIN"){
-            send_mess_str = handleLoginRequest(parts, isLoggedIn, userDb);
+            send_mess_str = handleLoginRequest(parts, isLoggedIn);
             player->isLoggedIn = isLoggedIn;
+        } else if (parts[0]=="ANS"){
+            send_mess_str = handleAnsRequest(parts, player); 
         } else {
             send_mess_str = "FAIL;wrong_format";
         }
@@ -220,65 +273,12 @@ void handleClient(struct ClientInfo * player){
             perror("[-]Failed to send response\n");
         }
     }
-    // while(!isLoggedIn){
-    //     char send_buffer[MAXLINE];
-    //     char recv_buffer[MAXLINE];
-
-    //     int recv_code = recv(connfd, recv_buffer, MAXLINE,0);
-
-    //     if (recv_code == 0) {
-
-    //         cout << player.client_info << " has disconnected\n";
-    //         return;
-    //     }
-    //     else if(recv_code < 0) {
-    //         perror("");
-    //         return;
-    //     }
-
-    //     string recv_mess_str(recv_buffer);
-    //     vector<string> parts = split(recv_mess_str, ";");
-    //     if (parts.size() !=3 ) {
-    //         sprintf(send_buffer, "FAIL;wrong_format");
-    //     }
-    //     else if (parts[0] == "REGIS"){
-    //         string username = parts[1];
-    //         string password = parts[2];
-
-    //         dbMutex.lock();
-    //         if (userDb.find(username) == userDb.end()) {
-    //             userDb[username] = password;
-    //             saveUserData("data/user_account.txt", username, password); 
-    //             sprintf(send_buffer, "SUCCESS");
-    //             isLoggedIn = true;
-    //         } else {
-    //             sprintf(send_buffer, "FAIL;account_exist");
-    //         }
-    //         dbMutex.unlock();
-    //     } else if (parts[0] == "LOGIN") {
-    //         string username = parts[1];
-    //         string password = parts[2];
-
-    //         dbMutex.lock();
-    //         if (userDb.find(username) != userDb.end() && userDb[username] == password) {
-    //             sprintf(send_buffer, "SUCCESS");
-    //             isLoggedIn = true;
-    //         } else {
-    //             sprintf(send_buffer, "FAIL;invalid_credential");
-    //         }
-    //         dbMutex.unlock();
-    //     } else {
-    //         sprintf(send_buffer, "FAIL;unauthorized");
-    //     }
-
-    //     if (send(connfd, send_buffer, MAXLINE, 0) < 0) {
-    //         perror("[-]Failed to send response\n");
-    //     }
+    
     
     close(connfd);
 }
 
-string handleRegisRequest(const vector<string>& parts, bool& isLoggedIn, map<string, string> userDb){
+string handleRegisRequest(const vector<string>& parts, bool& isLoggedIn){
     string response;
 
     if (isLoggedIn){
@@ -310,7 +310,7 @@ string handleRegisRequest(const vector<string>& parts, bool& isLoggedIn, map<str
     return response;
 }
 
-string handleLoginRequest(const vector<string>& parts, bool& isLoggedIn, map<string, string> userDb){
+string handleLoginRequest(const vector<string>& parts, bool& isLoggedIn){
     string response;
 
     if (isLoggedIn){
@@ -338,4 +338,21 @@ string handleLoginRequest(const vector<string>& parts, bool& isLoggedIn, map<str
 
     return response;
 }
+
+string handleAnsRequest(const vector<string>& parts, struct ClientInfo * player){
+    if (!player->isLoggedIn){
+        return "FAIL;unauthorized";
+    }
+
+    int round = stoi(parts[1]);
+    if (round != game.round){
+        return "FAIL;wrong_round";
+    }
+
+    player->submitted_answer = stoi(parts[2]);
+    player->round = round;
+    player->time_answer = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - game.ckpt_send_quest).count();
+    cout << "User " << player->connfd << " answered in " << player->time_answer << endl;
+    return "SUCCESS";
+};
 

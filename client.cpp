@@ -90,32 +90,60 @@ bool getInputWithCountdown(std::string &input, int time_limit) {
 }
 
 void questionAnswer(int connfd){
+    char send_buffer[MAXLINE];
+    char recv_buffer[MAXLINE];
     while (true){
-        char recv_buffer[MAXLINE];
+        memset(send_buffer, 0, sizeof(send_buffer));
+        memset(recv_buffer, 0, sizeof(recv_buffer));
+
         cout << "Waiting question from server ...\n";
-        if(recv(connfd, recv_buffer, MAXLINE, 0) < 0) {
+        if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
             perror("[-] Failed to receive response from server\n");
             exit(0);
         }
+
         string recv_mess_str(recv_buffer);
-        cout << "Question from server: " << recv_mess_str << endl;
+        cout << "Message from server: " << recv_mess_str << endl;
         vector<string> parts = split(recv_mess_str, ";");
         if (parts[0]=="QUEST"){
-            int time_limit = stoi(parts[parts.size()-1]);
+            int round = stoi(parts[1]);
+            int time_limit = stoi(parts[2]);
             string choice;
-
-            cout << parts[1] << endl;
-            for (int i=2; i<parts.size()-1; i++){
-                cout << i-1 << ") " << parts[i] << endl;
+            
+            cout << "Round " << round << endl; 
+            cout << parts[3] << endl;
+            for (int i=4; i<parts.size(); i++){
+                cout << i-3 << ") " << parts[i] << endl;
             }
             // cout << "Enter your choice: ";
             bool answered = getInputWithCountdown(choice, time_limit);
             if (answered && !choice.empty()) {
-                cout << "Answer successfully. Your choice is " << choice << endl;
+                sprintf(send_buffer, "ANS;%s;%s", parts[1].c_str(), choice.c_str());
+                if (send(connfd, send_buffer, strlen(send_buffer), 0) < 0)
+                    perror("[-] Failed to send message to server\n");
+                cout << "Answer successfully. Your choice is " << send_buffer << endl;
+
+                memset(recv_buffer, 0, sizeof(recv_buffer));
+                if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+                    perror("[-] Failed to receive response from server\n");
+                    exit(0);
+                }
+                string recv_mess_str(recv_buffer);
+                cout << "Response from server: " << recv_mess_str << endl;
             } else {
                 std::cout << "You did not answer this question.\n";
             }
-        }
+
+            // Receive result from server
+            cout << "Waiting result from server...\n";
+            memset(recv_buffer, 0, sizeof(recv_buffer));
+            if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+                perror("[-] Failed to receive response from server\n");
+                exit(0);
+            }
+            string recv_mess_str(recv_buffer);
+            cout << "Result from server: " << recv_mess_str << endl;
+        } 
     }
 };
 
@@ -123,7 +151,7 @@ void receiveStartSignal(int connfd){
     char recv_buffer[MAXLINE];
     cout << "Waiting server to start game ...\n";
     while (true){
-        if(recv(connfd, recv_buffer, MAXLINE, 0) < 0) {
+        if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
             perror("[-] Failed to receive response from server\n");
             exit(0);
         }
@@ -174,7 +202,7 @@ void authenticate(int connfd){
             exit(0);
         }
 
-        if(recv(connfd, recv_buffer, MAXLINE, 0) < 0) {
+        if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
             perror("[-] Failed to receive response from server\n");
             exit(0);
         }
