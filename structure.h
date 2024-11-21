@@ -18,7 +18,14 @@ struct ClientInfo {
 
 struct Game {
     bool isStart = false;
-    int round = 0;
-    std::chrono::time_point<std::chrono::system_clock> ckpt_send_quest;
-    int correct_answer;
+    int round = 0; // current round
+    std::chrono::time_point<std::chrono::system_clock> ckpt_send_quest; // time checkpoint when sending curr question
+    int correct_answer; // correct answer index of current question
+    int main_player_idx = -1; // idx of curr main player
+};
+
+struct Question {
+    string question_text;
+    vector<string> answer_texts;
+    int correct_idx;
 };

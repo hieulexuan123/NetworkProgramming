@@ -19,7 +19,7 @@ int main(int argc, char **argv)
     int sockfd;
     struct sockaddr_in servaddr;
     char sendline[MAXLINE], recvline[MAXLINE];
-        
+
     //basic check of the arguments
     //additional checks can be inserted
     if (argc !=2) {
@@ -57,7 +57,7 @@ bool getInputWithCountdown(std::string &input, int time_limit) {
     struct timeval timeout;
 
     // Print the prompt once outside the loop
-    std::cout << "Enter your choice: ";
+    cout << "Enter your choice: ";
 
     for (int remaining_time = time_limit; remaining_time > 0; --remaining_time) {
         // Clear the file descriptor set and set stdin for monitoring
@@ -105,6 +105,7 @@ void questionAnswer(int connfd){
         string recv_mess_str(recv_buffer);
         cout << "Message from server: " << recv_mess_str << endl;
         vector<string> parts = split(recv_mess_str, ";");
+
         if (parts[0]=="QUEST"){
             int round = stoi(parts[1]);
             int time_limit = stoi(parts[2]);
@@ -115,7 +116,7 @@ void questionAnswer(int connfd){
             for (int i=4; i<parts.size(); i++){
                 cout << i-3 << ") " << parts[i] << endl;
             }
-            // cout << "Enter your choice: ";
+
             bool answered = getInputWithCountdown(choice, time_limit);
             if (answered && !choice.empty()) {
                 sprintf(send_buffer, "ANS;%s;%s", parts[1].c_str(), choice.c_str());
@@ -130,8 +131,17 @@ void questionAnswer(int connfd){
                 }
                 string recv_mess_str(recv_buffer);
                 cout << "Response from server: " << recv_mess_str << endl;
+                vector<string> parts = split(recv_mess_str, ";");
+
+                if (parts[0]=="ANS_RES"){
+                    if (stoi(parts[1])==1){
+                        cout << "Valid choice \n";
+                    } else if (stoi(parts[1])==2){
+                        cout << "Timeout\n";
+                    }
+                }
             } else {
-                std::cout << "You did not answer this question.\n";
+                cout << "You did not answer this question.\n";
             }
 
             // Receive result from server
@@ -141,9 +151,36 @@ void questionAnswer(int connfd){
                 perror("[-] Failed to receive response from server\n");
                 exit(0);
             }
+
             string recv_mess_str(recv_buffer);
             cout << "Result from server: " << recv_mess_str << endl;
-        } 
+
+            vector<string> parts = split(recv_mess_str, ";");
+            if (parts[0]=="RRESULT"){
+                int user_status = stoi(parts[1]);
+                int game_status = stoi(parts[2]);
+                int point = stoi(parts[3]);
+
+                if (user_status==1){
+                    if (round==0){
+                        cout << "You are the main player in next round\n";
+                    } else cout << "You answer correctly. You are the main player in next round\n";
+                } else if (user_status==2){
+                    if (round==0){
+                        cout << "You are the secondary player in next round\n";
+                    } else cout << "You answer correctly. You are secondary player in next round\n";
+                } else if (user_status==3){
+                    cout << "You answer wrong. You are eliminated\n";
+                    break;
+                }
+                cout << "Your point: " << point << endl;
+                if (game_status==2){
+                    cout << "Game ends\n";
+                    break;
+                }
+            }
+        }
+        cout << "--------------------------------\n"; 
     }
 };
 
@@ -151,13 +188,14 @@ void receiveStartSignal(int connfd){
     char recv_buffer[MAXLINE];
     cout << "Waiting server to start game ...\n";
     while (true){
+        memset(recv_buffer, 0, sizeof(recv_buffer));
         if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
             perror("[-] Failed to receive response from server\n");
             exit(0);
         }
         string recv_mess_str(recv_buffer);
         cout << "Signal from server: " << recv_mess_str << endl;
-        if (recv_mess_str == "startSS") {
+        if (recv_mess_str == "start") {
             cout << "Game start ...\n";
             return;
         }
@@ -170,10 +208,9 @@ void authenticate(int connfd){
     string username;
     string password;    
 
-    bool isLoggedIn = false;
     string choice;
 
-    while (!isLoggedIn){
+    while (true){
         cout << "Choose:\n1.Register\n2.Log in\n-------------------------\n";
         cin >> choice;
 
@@ -191,17 +228,17 @@ void authenticate(int connfd){
             cin >> username;
             cout << "Enter password: ";
             cin >> password;
-
+            memset(send_buffer, 0, sizeof(send_buffer));
             sprintf(send_buffer, "LOGIN;%s;%s", username.c_str(), password.c_str());
         } else {
             continue;
         }
-
+    
         if(send(connfd, send_buffer, MAXLINE,0) < 0) {
             perror("[-] Failed to send message to server\n");
             exit(0);
         }
-
+        memset(recv_buffer, 0, sizeof(recv_buffer));
         if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
             perror("[-] Failed to receive response from server\n");
             exit(0);
@@ -210,9 +247,25 @@ void authenticate(int connfd){
         cout << "Response: " << recv_buffer << endl;
         string recv_mess_str(recv_buffer);
         vector<string> parts = split(recv_mess_str, ";");
-        if (parts[0]=="SUCCESS"){
-            isLoggedIn = true;
-        } 
+
+        if (parts[0]=="REGIS_RES"){
+            if (stoi(parts[1])==1){
+                cout << "Create account successfully\n";
+            } else if (stoi(parts[1])==2){
+                cout << "Fail. Account is existing\n";
+            }          
+        }
+        else if (parts[0]=="LOGIN_RES"){
+            if (stoi(parts[1])==1){
+                cout << "Logged in successfully\n";
+                break;
+            } else if (stoi(parts[1])==2){
+                cout << "You are already logged in\n";
+            } else if (stoi(parts[1])==3){
+                cout << "Fail. Game is already started. Please wait until game ends\n";
+            } else if (stoi(parts[1])==4){
+                cout << "Fail. Wrong username or password\n";
+            }
+        }
     }
-    cout << "Logged in successfully\n";
 }

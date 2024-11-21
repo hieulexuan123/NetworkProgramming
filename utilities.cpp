@@ -4,6 +4,8 @@
 #include <string.h>
 #include <vector>
 #include <map>
+#include <random>
+#include "structure.h"
 
 using namespace std;
 
@@ -22,7 +24,7 @@ vector<string> split(string s, string delimiter) {
     return res;
 }
 
-map<string, string> loadUserData(const char* filename) {
+map<string, string> loadUserData(const string filename) {
     map<string, string> userDb;
     ifstream file(filename);
 
@@ -45,7 +47,7 @@ map<string, string> loadUserData(const char* filename) {
     return userDb;
 }
 
-void saveUserData(const char* filename, const string& username, const string& password) {
+void saveUserData(const string filename, const string& username, const string& password) {
     // Open the file in append mode
     ofstream file(filename, std::ios::app);
 
@@ -60,4 +62,49 @@ void saveUserData(const char* filename, const string& username, const string& pa
 
     // Close the file
     file.close();
+}
+
+vector<struct Question> loadQuestionBank(const string fileName){
+    vector<Question> questions;
+    ifstream file(fileName);
+
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file " << fileName << std::endl;
+        return questions;
+    }
+
+    string line;
+    while (getline(file, line)) {
+        if (line.empty()) continue; // Skip blank lines
+
+        Question q;
+        q.question_text = line; // First line is the question
+
+        // Read the correct answer index
+        if (!std::getline(file, line)) break;
+        q.correct_idx = stoi(line);
+
+        // Read the choices until a blank line or end of file
+        while (getline(file, line) && !line.empty()) {
+            q.answer_texts.push_back(line);
+        }
+
+        // Add the question to the vector
+        questions.push_back(q);
+    }
+
+    file.close();
+    return questions;
+}
+
+int getRandom(const vector<int>& nums){
+    std::random_device rd;  // Seed for the random number engine
+    std::mt19937 gen(rd()); // Mersenne Twister random number engine
+    std::uniform_int_distribution<> distrib(0, nums.size() - 1); // Random index between 0 and size-1
+
+    // Pick a random number from the array
+    int randomIndex = distrib(gen);
+    int randomNumber = nums[randomIndex];
+
+    return randomNumber;
 }
