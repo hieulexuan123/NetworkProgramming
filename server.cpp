@@ -93,7 +93,6 @@ int main (int argc, char **argv)
         if (FD_ISSET(STDIN_FILENO, &readfds)){
             string input;
             cin >> input;
-            cout << "Input: " << input << endl;
             if (input=="start" && !game.isStart){
                 cout << "Starting game...\n";
                 game.isStart = true;
@@ -300,7 +299,7 @@ bool broadcastResult(int round, int num_remain_questions){
                 if (player->isLoggedIn && !player->is_eliminated){
                     //  main player
                     if (player->is_main_player){
-                        player->point += main_player_added_point;
+                        player->point += POINT_PER_CORRECT + main_player_added_point;
                         player->is_main_player = true;
                         game.main_player_idx = i;
                         user_status = 1;
@@ -509,6 +508,13 @@ string handleLoginRequest(const vector<string>& parts, struct ClientInfo* player
     if (userDb.find(username) != userDb.end() && userDb[username] == password) {
         //success
         if (!game.isStart){
+            for (int i=0; i<player_list.size(); i++){
+                struct ClientInfo * player = player_list[i];
+                if (player->name == username && player->isLoggedIn){
+                    dbMutex.unlock();
+                    return "LOGIN_RES;2";
+                }
+            }
             player->isLoggedIn = true;
             player->name = username;
             response = "LOGIN_RES;1";
@@ -539,7 +545,7 @@ string handleAnsRequest(const vector<string>& parts, struct ClientInfo * player)
     }
 
     player->submitted_answer = stoi(parts[2]);
-    player->round = round;
+    // player->round = round;
     player->time_answer = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - game.ckpt_send_quest).count();
     cout << "[-] User " << player->name << " answered in " << player->time_answer << endl;
     // success
