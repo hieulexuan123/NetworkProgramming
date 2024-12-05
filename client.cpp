@@ -51,8 +51,38 @@ int main(int argc, char **argv)
     authenticate(sockfd);
     receiveStartSignal(sockfd);
     questionAnswer(sockfd);
-    // getFinalResult(sockfd);
+    getFinalResult(sockfd);
     std::cout << "Finish\n";
+}
+
+void getFinalResult(int connfd){
+    char recv_buffer[MAXLINE];
+    memset(recv_buffer, 0, sizeof(recv_buffer));
+
+    std::cout << "Waiting for final result...\n";
+
+    if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+        perror("[-] Failed to receive response from server\n");
+        exit(0);
+    }
+    // string recv_mess_str(recv_buffer);
+    string recv_mess_str(recv_buffer);
+    std::cout << "[-] " << recv_mess_str << endl;
+    vector<string> parts = split(recv_mess_str, ";");
+    if (parts[0]=="FRESULT"){
+        int is_winner = stoi(parts[3]);
+        string winner_name = parts[2];
+        if (is_winner==1){
+            std::cout << "You are the winner. Congratulation\n";
+        } else {
+            if (winner_name=="NONE"){
+                std::cout << "Noone wins\n";
+            } else {
+                std:: cout << "Winner is " << winner_name << endl;
+            }
+        }
+    }
+    std::cout << "Game ends\n";
 }
 
 bool sendSkipRequest(int connfd, int round){
@@ -253,7 +283,6 @@ void questionAnswer(int connfd){
                 }
                 std::cout << "Your point: " << point << endl;
                 if (game_status==2){
-                    std::cout << "Game ends\n";
                     break;
                 }
             }

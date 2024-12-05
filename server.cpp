@@ -35,13 +35,14 @@ void handleClient(struct ClientInfo * player);
 void askQuestionsLoop();
 void broadcastQuest(string question_text, vector<string> answer_texts, int round);
 string handleAnsRequest(const vector<string>& parts, struct ClientInfo * player);
-bool broadcastResult(int round, int num_remain_questions);
+bool broadcastRoundResult(int round, int num_remain_questions);
 int determineFastestPlayer();
 int getRandomPlayer();
 int sumPointWrongSecondaryPlayer();
 int distributePoint(int main_player_point);
 int determineGameStatus(int num_remain_questions);
 string handleSkipRequest(const vector<string>& parts, struct ClientInfo* player);
+void broadcastFinalResult(int num_remain_questions);
 
 int main (int argc, char **argv)
 {   
@@ -239,7 +240,7 @@ int determineGameStatus(int num_remain_questions){
     else return 2;
 }
 
-bool broadcastResult(int round, int num_remain_questions){
+bool broadcastRoundResult(int round, int num_remain_questions){
     string send_msg;
     int user_status;
     int game_status;
@@ -292,7 +293,11 @@ bool broadcastResult(int round, int num_remain_questions){
     else {
         // Main player skips question 
         if (game.is_skipped){
-            game_status = 1;
+            if (num_remain_questions > 0){
+                game_status = 1;
+            } else {
+                game_status = 2;
+            }
             round_status = 2;
             cout << "[-] Round: " << round << " Main player skips\n";
 
@@ -444,7 +449,7 @@ void askQuestionsLoop(){
 
     std::this_thread::sleep_for(std::chrono::seconds(TIME_LIMIT_INITIAL));
     cout << "[-] Send result...\n";
-    broadcastResult(game.round, --num_remain_questions);
+    broadcastRoundResult(game.round, --num_remain_questions);
 
     // ask subsequent questions until game ends
     for (int i=1; i<questions.size(); i++){       
@@ -462,7 +467,7 @@ void askQuestionsLoop(){
             if (game.is_skipped) {
                 // game.skip_occurred = false; // Reset the skip flag
                 cout << "[-] Skip detected. Sending result immediately.\n";
-                game_continued = broadcastResult(game.round, --num_remain_questions);
+                game_continued = broadcastRoundResult(game.round, --num_remain_questions);
                 break; // Exit the countdown loop to proceed to the next question
             }
             std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -471,7 +476,7 @@ void askQuestionsLoop(){
         // If no skip occurred, send the result after the countdown
         if (!game.is_skipped) {
             cout << "[-] Send result...\n";
-            game_continued = broadcastResult(game.round, --num_remain_questions);
+            game_continued = broadcastRoundResult(game.round, --num_remain_questions);
         }
 
         game.is_skipped = false; // reset is_skipped
@@ -479,7 +484,46 @@ void askQuestionsLoop(){
             break;
         }
     }
+    std::this_thread::sleep_for(std::chrono::seconds(TIME_BREAK));
+    broadcastFinalResult(num_remain_questions);
     cout << "[-] Game ends\n";
+}
+
+void broadcastFinalResult(int num_remain_questions){
+    int winner_score = 0;
+    int winner_idx = -1;
+    string base_send_msg, send_msg; 
+
+    for (int i=0; i<player_list.size(); i++){
+        struct ClientInfo * player = player_list[i];
+        if (player->isLoggedIn && !player->is_eliminated && player->point > winner_score){
+            winner_score = player->point;
+            winner_idx = i;
+        }
+    }
+
+    if (winner_idx==-1){
+        base_send_msg = "FRESULT;2;NONE";
+    }
+    else if (num_remain_questions==0){
+        base_send_msg = "FRESULT;3;" + player_list[winner_idx]->name;
+    } else {
+        base_send_msg = "FRESULT;1;" + player_list[winner_idx]->name; 
+    }
+
+    for (int i=0; i<player_list.size(); i++){
+        struct ClientInfo * player = player_list[i];
+        if (player->isLoggedIn){
+            bool is_winner = winner_idx == i;
+            if (is_winner){
+                send_msg = base_send_msg + ";1";
+            } else{
+                send_msg = base_send_msg + ";2";
+            }
+        }
+        if (send(player->connfd, send_msg.c_str(), send_msg.length(), 0) < 0)
+            perror("[-] Failed to send message to client\n");
+    }
 }
 
 void handleClient(struct ClientInfo * player){
@@ -624,16 +668,16 @@ string handleAnsRequest(const vector<string>& parts, struct ClientInfo * player)
 };
 
 string handleSkipRequest(const vector<string>& parts, struct ClientInfo* player){
+    int round = stoi(parts[1]);
+    if (round==0){
+        return "SKIP_RES;5";
+    }
+
     if (!player->is_main_player){
         return "SKIP_RES;2";
     }
     if (player->remaining_skips<=0){
         return "SKIP_RES;3";
-    }
-
-    int round = stoi(parts[1]);
-    if (round==0){
-        return "SKIP_RES;5";
     }
     if (round != game.round){
         return "SKIP_RES;4";
