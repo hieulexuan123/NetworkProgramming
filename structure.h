@@ -13,11 +13,13 @@ struct ClientInfo {
     bool is_eliminated = false;
     int submitted_answer = -1;
     int round = -1;
+    int remaining_skips = 2;
     int time_answer; 
 };
 
 struct Game {
     bool isStart = false;
+    bool is_skipped = false;
     int round = 0; // current round
     std::chrono::time_point<std::chrono::system_clock> ckpt_send_quest; // time checkpoint when sending curr question
     int correct_answer; // correct answer index of current question

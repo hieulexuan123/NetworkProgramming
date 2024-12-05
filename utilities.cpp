@@ -108,3 +108,13 @@ int getRandom(const vector<int>& nums){
 
     return randomNumber;
 }
+
+bool isNumber(const std::string& str) {
+    try {
+        std::size_t pos;
+        std::stoi(str, &pos);
+        return pos == str.length(); // Check if the whole string was converted
+    } catch (std::exception& e) {
+        return false;
+    }
+}
