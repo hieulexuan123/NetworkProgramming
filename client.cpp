@@ -52,7 +52,6 @@ int main(int argc, char **argv)
     receiveStartSignal(sockfd);
     questionAnswer(sockfd);
     getFinalResult(sockfd);
-    std::cout << "Finish\n";
 }
 
 void getFinalResult(int connfd){
@@ -172,8 +171,10 @@ int getInputWithCountdown(std::string &input, int time_limit, bool is_main, int 
                 recv_mess_str.assign(recv_buffer);
                 std::cout << "\n[-] " << recv_mess_str << std::endl;
                 vector<string> parts = split(recv_mess_str, ";");
-                if (parts[0]=="RRESULT" && stoi(parts[2])==2){
-                    std::cout << "Question is skipped by main player\n";
+                if (parts[0]=="RRESULT"){
+                    if (stoi(parts[2])==2){
+                        std::cout << "Question is skipped by main player\n";
+                    }
                     return 3; // question is skipped by main player
                 }
             }          
@@ -181,7 +182,7 @@ int getInputWithCountdown(std::string &input, int time_limit, bool is_main, int 
     }
 
     // If time runs out, display timeout message
-    std::cout << "\nTime's up for this question!\n";
+    std::cout << "Time's up for this question!\n";
     return 0; // not answer
 }
 

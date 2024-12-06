@@ -538,7 +538,7 @@ void handleClient(struct ClientInfo * player){
 
         //player disconnects
         if (recv_code == 0) {
-            cout << "[-]" << player->client_info << " has disconnected\n";
+            cout << "[-] " << player->client_info << " has disconnected\n";
             for (int i=0; i<player_list.size(); i++){
                 if (player_list[i]->connfd == player->connfd){
                     player_list.erase(player_list.begin() + i);
