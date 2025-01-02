@@ -120,12 +120,12 @@ int main (int argc, char **argv)
             clilen = sizeof(cliaddr);
             connfd = accept (listenfd, (struct sockaddr *) &cliaddr, &clilen);
             if (connfd < 0) {
-                cout << "[-]Connection failed\n";
+                cout << "\033[1;31m" << "[-]Connection failed\n" << "\033[0m";
                 continue;
             }
             
             string client_info = (string)inet_ntoa(cliaddr.sin_addr) + ":" + to_string(ntohs(cliaddr.sin_port));
-            cout << "[-]" << client_info << " has connected to the server\n";
+            cout << "\033[1;31m" << "[-]" << client_info << " has connected to the server\n" << "\033[0m";
 
             // Create player info
             struct ClientInfo * player = new ClientInfo;
@@ -134,7 +134,7 @@ int main (int argc, char **argv)
 
             // Add player info to player_list
             player_list.push_back(player);
-            cout << "[-] Number of clients: " << player_list.size() << endl;
+            cout << "\033[1;31m" << "[-] Number of clients: " << player_list.size() << "\033[0m" << endl;
 
             thread th_client(handleClient, player);
             th_client.detach();
@@ -248,17 +248,17 @@ bool broadcastRoundResult(int round, int num_remain_questions){
 
     // Initial round to determind role
     if (round==0){
-        cout << "[-] Determine roles\n";
+        cout << "\033[1;31m" << "[-] Determine roles\n" << "\033[0m";
         game_status = 1;
         round_status = 1;
 
         int main_player_idx = determineFastestPlayer();
         // nobody answers correctly -> determine randomly
         if (main_player_idx == -1){
-            cout << "[-] Nobody answers correctly. Randomly assign main player.\n";
+            cout << "\033[1;31m" << "[-] Nobody answers correctly. Randomly assign main player.\n" << "\033[0m";
             main_player_idx = getRandomPlayer();
         }
-        cout << "[-] Main player idx: " << main_player_idx << endl;
+        cout << "\033[1;31m" << "[-] Main player idx: " << main_player_idx << "\033[0m" << endl;
 
         for (int i=0; i<player_list.size(); i++){
             struct ClientInfo * player = player_list[i];
@@ -299,7 +299,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
                 game_status = 2;
             }
             round_status = 2;
-            cout << "[-] Round: " << round << " Main player skips\n";
+            cout << "\033[1;31m" << "[-] Round: " << round << " Main player skips\n" << "\033[0m";
 
             int num_secondary_players = 0;
             for (int i=0; i<player_list.size(); i++){
@@ -345,7 +345,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
             game_status = determineGameStatus(num_remain_questions);
             round_status = 1;
 
-            cout << "[-] Round: " << round << " Main player answer correctly\n";
+            cout << "\033[1;31m" << "[-] Round: " << round << " Main player answer correctly\n" << "\033[0m";
             int main_player_added_point = sumPointWrongSecondaryPlayer();
             cout << "Main player receive " << main_player_added_point << endl;
             for (int i=0; i<player_list.size(); i++){
@@ -386,7 +386,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
             game_status = determineGameStatus(num_remain_questions);
             round_status = 1; 
 
-            cout << "[-] Round: " << round << " Main player answer wrong\n";
+            cout << "\033[1;31m" << "[-] Round: " << round << " Main player answer wrong\n" << "\033[0m";
 
             int player_fastest_idx = determineFastestPlayer();
             int main_player_point = player_list[game.main_player_idx]->point;
@@ -443,12 +443,12 @@ void askQuestionsLoop(){
 
     game.correct_answer = questions[0].correct_idx;
     game.round = 0;
-    cout << "[-] Send question...\n";
+    cout << "\033[1;31m" << "[-] Send question...\n" << "\033[0m";
     broadcastQuest(questions[0].question_text, questions[0].answer_texts, game.round);
     game.ckpt_send_quest = std::chrono::system_clock::now();
 
     std::this_thread::sleep_for(std::chrono::seconds(TIME_LIMIT_INITIAL));
-    cout << "[-] Send result...\n";
+    cout << "\033[1;31m" << "[-] Send result...\n" << "\033[0m";
     broadcastRoundResult(game.round, --num_remain_questions);
 
     // ask subsequent questions until game ends
@@ -457,7 +457,7 @@ void askQuestionsLoop(){
 
         game.correct_answer = questions[i].correct_idx;
         game.round ++;
-        cout << "[-] Send question...\n";
+        cout << "\033[1;31m" << "[-] Send question...\n" << "\033[0m";
         broadcastQuest(questions[i].question_text, questions[i].answer_texts, game.round);
         game.ckpt_send_quest = std::chrono::system_clock::now();
 
@@ -466,7 +466,7 @@ void askQuestionsLoop(){
             // Check if a skip occurred during the countdown
             if (game.is_skipped) {
                 // game.skip_occurred = false; // Reset the skip flag
-                cout << "[-] Skip detected. Sending result immediately.\n";
+                cout << "\033[1;31m" << "[-] Skip detected. Sending result immediately.\n" << "\033[0m";
                 game_continued = broadcastRoundResult(game.round, --num_remain_questions);
                 break; // Exit the countdown loop to proceed to the next question
             }
@@ -475,7 +475,7 @@ void askQuestionsLoop(){
 
         // If no skip occurred, send the result after the countdown
         if (!game.is_skipped) {
-            cout << "[-] Send result...\n";
+            cout << "\033[1;31m" << "[-] Send result...\n" << "\033[0m";
             game_continued = broadcastRoundResult(game.round, --num_remain_questions);
         }
 
@@ -486,7 +486,7 @@ void askQuestionsLoop(){
     }
     std::this_thread::sleep_for(std::chrono::seconds(TIME_BREAK));
     broadcastFinalResult(num_remain_questions);
-    cout << "[-] Game ends\n";
+    cout << "\033[1;31m" << "[-] Game ends\n" << "\033[0m";
 }
 
 void broadcastFinalResult(int num_remain_questions){
@@ -538,7 +538,7 @@ void handleClient(struct ClientInfo * player){
 
         //player disconnects
         if (recv_code == 0) {
-            cout << "[-] " << player->client_info << " has disconnected\n";
+            cout << "\033[1;31m" << "[-] " << player->client_info << " has disconnected\n" << "\033[0m";
             for (int i=0; i<player_list.size(); i++){
                 if (player_list[i]->connfd == player->connfd){
                     player_list.erase(player_list.begin() + i);
@@ -662,7 +662,7 @@ string handleAnsRequest(const vector<string>& parts, struct ClientInfo * player)
     player->submitted_answer = stoi(parts[2]);
     // player->round = round;
     player->time_answer = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - game.ckpt_send_quest).count();
-    cout << "[-] User " << player->name << " answered in " << player->time_answer << endl;
+    cout << "\033[1;31m" << "[-] User " << player->name << " answered in " << player->time_answer << endl << "\033[0m";
     // success
     return "ANS_RES;1";
 };
