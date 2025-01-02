@@ -95,14 +95,14 @@ int main (int argc, char **argv)
         if (FD_ISSET(STDIN_FILENO, &readfds)){
             string input;
             cin >> input;
-            if (input=="start" && !game.isStart){
+            if (input=="start" && !game.is_start){
                 cout << "Starting game...\n";
-                game.isStart = true;
+                game.is_start = true;
                 
                 char send_msg[] = "start";
                 for (int i=0; i<player_list.size(); i++){
                     //Only send "start" message to logged in players
-                    if (player_list[i]->isLoggedIn){
+                    if (player_list[i]->is_logged_in){
                         if (send(player_list[i]->connfd, send_msg, strlen(send_msg), 0) < 0)
                             perror("[-] Failed to send message to client\n");
                     }
@@ -149,7 +149,7 @@ int main (int argc, char **argv)
 void broadcastQuest(string question_text, vector<string> answer_texts, int round){
     for (int i=0; i<player_list.size(); i++){
         // Only send message to logged in and alive players
-        if (player_list[i]->isLoggedIn && !player_list[i]->is_eliminated){
+        if (player_list[i]->is_logged_in && !player_list[i]->is_eliminated){
             int time_limit;
             string send_msg = "QUEST";
 
@@ -177,7 +177,7 @@ int determineFastestPlayer(){
 
     for (int i=0; i<player_list.size(); i++){
         struct ClientInfo * player = player_list[i];
-        if (player->isLoggedIn && !player->is_eliminated && game.correct_answer == player->submitted_answer && player->time_answer < time_shortest){
+        if (player->is_logged_in && !player->is_eliminated && game.correct_answer == player->submitted_answer && player->time_answer < time_shortest){
             time_shortest = player->time_answer;
             player_fastest_idx = i;
         }
@@ -189,7 +189,7 @@ int getRandomPlayer(){
     vector<int> player_indexes;
     for (int i=0; i<player_list.size(); i++){
         struct ClientInfo * player = player_list[i];
-        if (player->isLoggedIn && !player->is_eliminated){
+        if (player->is_logged_in && !player->is_eliminated){
             player_indexes.push_back(i);
         }
     }
@@ -200,7 +200,7 @@ int sumPointWrongSecondaryPlayer(){
     int total = 0;
     for (int i=0; i<player_list.size(); i++){
         struct ClientInfo * player = player_list[i];
-        if (player->isLoggedIn && !player->is_eliminated && !player->is_main_player && game.correct_answer != player->submitted_answer){
+        if (player->is_logged_in && !player->is_eliminated && !player->is_main_player && game.correct_answer != player->submitted_answer){
             total += player->point;
         }
     }
@@ -211,7 +211,7 @@ int distributePoint(int main_player_point){
     int num_correct_secondary_players = 0;
     for (int i=0; i<player_list.size(); i++){
         struct ClientInfo * player = player_list[i];
-        if (player->isLoggedIn && !player->is_eliminated && !player->is_main_player && game.correct_answer == player->submitted_answer){
+        if (player->is_logged_in && !player->is_eliminated && !player->is_main_player && game.correct_answer == player->submitted_answer){
             num_correct_secondary_players ++;
         }
     }
@@ -229,7 +229,7 @@ int determineGameStatus(int num_remain_questions){
     int num_correct_players = 0;
     for (int i=0; i<player_list.size(); i++){
         struct ClientInfo * player = player_list[i];
-        if (player->isLoggedIn && !player->is_eliminated && game.correct_answer == player->submitted_answer){
+        if (player->is_logged_in && !player->is_eliminated && game.correct_answer == player->submitted_answer){
             num_correct_players ++;
         }
     }
@@ -262,7 +262,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
 
         for (int i=0; i<player_list.size(); i++){
             struct ClientInfo * player = player_list[i];
-            if (player->isLoggedIn && !player->is_eliminated){
+            if (player->is_logged_in && !player->is_eliminated){
                 player->point += POINT_INITIAL; // everybody in first round gets initial point
                 //  main player
                 if (i == main_player_idx){
@@ -304,7 +304,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
             int num_secondary_players = 0;
             for (int i=0; i<player_list.size(); i++){
                 struct ClientInfo * player = player_list[i];
-                if (player->isLoggedIn && !player->is_eliminated && !player->is_main_player){
+                if (player->is_logged_in && !player->is_eliminated && !player->is_main_player){
                     num_secondary_players ++;
                 }
             }
@@ -313,7 +313,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
 
             for (int i=0; i<player_list.size(); i++){
                 struct ClientInfo * player = player_list[i];
-                if (player->isLoggedIn && !player->is_eliminated){
+                if (player->is_logged_in && !player->is_eliminated){
                     //  main player
                     if (player->is_main_player){
                         player->point /= 2;
@@ -350,7 +350,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
             cout << "Main player receive " << main_player_added_point << endl;
             for (int i=0; i<player_list.size(); i++){
                 struct ClientInfo * player = player_list[i];
-                if (player->isLoggedIn && !player->is_eliminated){
+                if (player->is_logged_in && !player->is_eliminated){
                     //  main player
                     if (player->is_main_player){
                         player->point += POINT_PER_CORRECT + main_player_added_point;
@@ -395,7 +395,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
 
             for (int i=0; i<player_list.size(); i++){
                 struct ClientInfo * player = player_list[i];
-                if (player->isLoggedIn && !player->is_eliminated){
+                if (player->is_logged_in && !player->is_eliminated){
                     //  fastest secondary player
                     if (i == player_fastest_idx){
                         player->point += distributed_point;
@@ -496,7 +496,7 @@ void broadcastFinalResult(int num_remain_questions){
 
     for (int i=0; i<player_list.size(); i++){
         struct ClientInfo * player = player_list[i];
-        if (player->isLoggedIn && !player->is_eliminated && player->point > winner_score){
+        if (player->is_logged_in && !player->is_eliminated && player->point > winner_score){
             winner_score = player->point;
             winner_idx = i;
         }
@@ -513,7 +513,7 @@ void broadcastFinalResult(int num_remain_questions){
 
     for (int i=0; i<player_list.size(); i++){
         struct ClientInfo * player = player_list[i];
-        if (player->isLoggedIn){
+        if (player->is_logged_in){
             bool is_winner = winner_idx == i;
             if (is_winner){
                 send_msg = base_send_msg + ";1";
@@ -609,7 +609,7 @@ string handleLoginRequest(const vector<string>& parts, struct ClientInfo* player
     string response;
 
     //fail, already logged in
-    if (player->isLoggedIn){
+    if (player->is_logged_in){
         return "LOGIN_RES;2";
     }
     if (parts.size() !=3 ) {
@@ -622,15 +622,15 @@ string handleLoginRequest(const vector<string>& parts, struct ClientInfo* player
     dbMutex.lock();
     if (userDb.find(username) != userDb.end() && userDb[username] == password) {
         //success
-        if (!game.isStart){
+        if (!game.is_start){
             for (int i=0; i<player_list.size(); i++){
                 struct ClientInfo * player = player_list[i];
-                if (player->name == username && player->isLoggedIn){
+                if (player->name == username && player->is_logged_in){
                     dbMutex.unlock();
                     return "LOGIN_RES;2";
                 }
             }
-            player->isLoggedIn = true;
+            player->is_logged_in = true;
             player->name = username;
             response = "LOGIN_RES;1";
         //fail, game already started
@@ -639,7 +639,7 @@ string handleLoginRequest(const vector<string>& parts, struct ClientInfo* player
         }
     //fail, wrong username or password
     } else {
-        player->isLoggedIn = false;
+        player->is_logged_in = false;
         response = "LOGIN_RES;4";
     }
     dbMutex.unlock();
@@ -649,7 +649,7 @@ string handleLoginRequest(const vector<string>& parts, struct ClientInfo* player
 
 string handleAnsRequest(const vector<string>& parts, struct ClientInfo * player){
     // unauthorized
-    if (!player->isLoggedIn){
+    if (!player->is_logged_in){
         return "ANS_RES;3";
     }
 

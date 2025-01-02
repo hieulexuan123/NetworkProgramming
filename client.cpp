@@ -20,7 +20,6 @@ int main(int argc, char **argv)
 {
     int sockfd;
     struct sockaddr_in servaddr;
-    char sendline[MAXLINE], recvline[MAXLINE];
 
     //basic check of the arguments
     //additional checks can be inserted
@@ -223,7 +222,7 @@ void questionAnswer(int connfd){
                 sprintf(send_buffer, "ANS;%s;%s", parts[1].c_str(), choice.c_str());
                 if (send(connfd, send_buffer, strlen(send_buffer), 0) < 0)
                     perror("[-] Failed to send message to server\n");
-                std::cout << "Answer successfully. Your choice is " << send_buffer << endl;
+                std::cout << "Submiy answer successfully.\n[-] " << send_buffer << endl;
 
                 memset(recv_buffer, 0, sizeof(recv_buffer));
                 if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
@@ -267,6 +266,16 @@ void questionAnswer(int connfd){
                 int game_status = stoi(parts[3]);
                 int point = stoi(parts[4]);
 
+                if (game_status==2){
+                    if (user_status==3){
+                        std::cout << "You answer wrong. You are eliminated\n";
+                    } else {
+                        std::cout << "You answer correctly\n";
+                    }
+                    std::cout << "Your point: " << point << endl;
+                    break;
+                }
+
                 if (user_status==1){
                     is_main = true;
                     if (round==0 || round_status==2){
@@ -283,9 +292,6 @@ void questionAnswer(int connfd){
                     break;
                 }
                 std::cout << "Your point: " << point << endl;
-                if (game_status==2){
-                    break;
-                }
             }
         }
         std::cout << "--------------------------------\n"; 

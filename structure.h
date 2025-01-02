@@ -6,19 +6,18 @@ struct ClientInfo {
     int connfd;
     string name;
     string client_info;
-    bool isLoggedIn = false;
+    bool is_logged_in = false;
 
     int point = 0;
     bool is_main_player= false;
     bool is_eliminated = false;
     int submitted_answer = -1;
-    int round = -1;
     int remaining_skips = 2;
     int time_answer; 
 };
 
 struct Game {
-    bool isStart = false;
+    bool is_start = false;
     bool is_skipped = false;
     int round = 0; // current round
     std::chrono::time_point<std::chrono::system_clock> ckpt_send_quest; // time checkpoint when sending curr question
