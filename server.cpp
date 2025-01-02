@@ -120,7 +120,7 @@ int main (int argc, char **argv)
             clilen = sizeof(cliaddr);
             connfd = accept (listenfd, (struct sockaddr *) &cliaddr, &clilen);
             if (connfd < 0) {
-                cout << "[-]Connection failed\n";
+                cout << "[-] Connection failed\n";
                 continue;
             }
             
@@ -276,7 +276,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
                     user_status = 2;
                 } 
 
-                cout << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
+                cout << "[-] " << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
                 send_msg = "RRESULT;" + to_string(user_status) + ";" + to_string(round_status) + ";" + to_string(game_status) + ";" + to_string(player->point);
                 
                 //Send result to clients
@@ -309,7 +309,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
                 }
             }
             int secondary_added_point = player_list[game.main_player_idx]->point / (2*num_secondary_players);
-            cout << "Secondary player receive " << secondary_added_point << endl; 
+            cout << "[-] Secondary player receive " << secondary_added_point << endl; 
 
             for (int i=0; i<player_list.size(); i++){
                 struct ClientInfo * player = player_list[i];
@@ -328,7 +328,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
                         user_status = 2;
                     } 
 
-                    cout << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
+                    cout << "[-] " << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
                     send_msg = "RRESULT;" + to_string(user_status) + ";" + to_string(round_status) + ";" + to_string(game_status) + ";" + to_string(player->point);
                     
                     //Send result to clients
@@ -347,7 +347,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
 
             cout << "[-] Round: " << round << " Main player answer correctly\n";
             int main_player_added_point = sumPointWrongSecondaryPlayer();
-            cout << "Main player receive " << main_player_added_point << endl;
+            cout << "[-] Main player receive " << main_player_added_point << endl;
             for (int i=0; i<player_list.size(); i++){
                 struct ClientInfo * player = player_list[i];
                 if (player->is_logged_in && !player->is_eliminated){
@@ -370,7 +370,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
                         user_status = 3;
                     }
 
-                    cout << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
+                    cout << "[-] " << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
                     send_msg = "RRESULT;" + to_string(user_status) + ";" + to_string(round_status) + ";" + to_string(game_status) + ";" + to_string(player->point);
                     //Send result to clients
                     if (send(player->connfd, send_msg.c_str(), send_msg.length(), 0) < 0)
@@ -391,7 +391,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
             int player_fastest_idx = determineFastestPlayer();
             int main_player_point = player_list[game.main_player_idx]->point;
             int distributed_point = distributePoint(main_player_point);
-            cout << "Correct secondary player receive " << distributed_point << endl;
+            cout << "[-] Correct secondary player receive " << distributed_point << endl;
 
             for (int i=0; i<player_list.size(); i++){
                 struct ClientInfo * player = player_list[i];
@@ -415,7 +415,7 @@ bool broadcastRoundResult(int round, int num_remain_questions){
                         user_status = 3;
                     }
 
-                    cout << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
+                    cout << "[-] " << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
                     send_msg = "RRESULT;" + to_string(user_status) + ";" + to_string(round_status) + ";" + to_string(game_status) + ";" + to_string(player->point);
                     
                     //Send result to clients
@@ -556,7 +556,7 @@ void handleClient(struct ClientInfo * player){
         string recv_mess_str(recv_buffer);
         string send_mess_str;
         vector<string> parts = split(recv_mess_str, ";");
-        cout << recv_mess_str << endl;
+        cout << "\033[1;31m" << recv_mess_str << "\033[0m" << endl;
         
         if (parts[0]=="REGIS"){
             send_mess_str = handleRegisRequest(parts);

@@ -65,7 +65,7 @@ void getFinalResult(int connfd){
     }
     // string recv_mess_str(recv_buffer);
     string recv_mess_str(recv_buffer);
-    std::cout << "[-] " << recv_mess_str << endl;
+    std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
     vector<string> parts = split(recv_mess_str, ";");
     if (parts[0]=="FRESULT"){
         int is_winner = stoi(parts[3]);
@@ -99,7 +99,7 @@ bool sendSkipRequest(int connfd, int round){
         exit(0);
     }
     string recv_mess_str(recv_buffer);
-    std::cout << "[-] " << recv_mess_str << endl;
+    std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
     vector<string> parts = split(recv_mess_str, ";");
     if (parts[0]=="SKIP_RES"){
         int res = stoi(parts[1]);
@@ -168,7 +168,7 @@ int getInputWithCountdown(std::string &input, int time_limit, bool is_main, int 
                     exit(0);
                 }
                 recv_mess_str.assign(recv_buffer);
-                std::cout << "\n[-] " << recv_mess_str << std::endl;
+                std::cout << "\033[1;31m"<< "\n[-] " << recv_mess_str << "\033[0m" << std::endl;
                 vector<string> parts = split(recv_mess_str, ";");
                 if (parts[0]=="RRESULT"){
                     if (stoi(parts[2])==2){
@@ -203,7 +203,7 @@ void questionAnswer(int connfd){
 
         // string recv_mess_str(recv_buffer);
         recv_mess_str.assign(recv_buffer);
-        std::cout << "[-] " << recv_mess_str << endl;
+        std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
         vector<string> parts = split(recv_mess_str, ";");
 
         if (parts[0]=="QUEST"){
@@ -222,7 +222,7 @@ void questionAnswer(int connfd){
                 sprintf(send_buffer, "ANS;%s;%s", parts[1].c_str(), choice.c_str());
                 if (send(connfd, send_buffer, strlen(send_buffer), 0) < 0)
                     perror("[-] Failed to send message to server\n");
-                std::cout << "Submiy answer successfully.\n[-] " << send_buffer << endl;
+                std::cout << "Submit answer successfully.\n";
 
                 memset(recv_buffer, 0, sizeof(recv_buffer));
                 if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
@@ -231,7 +231,7 @@ void questionAnswer(int connfd){
                 }
                 // string recv_mess_str(recv_buffer);
                 recv_mess_str.assign(recv_buffer);
-                std::cout << "[-] " << recv_mess_str << endl;
+                std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
                 vector<string> parts = split(recv_mess_str, ";");
 
                 if (parts[0]=="ANS_RES"){
@@ -256,7 +256,7 @@ void questionAnswer(int connfd){
 
                 // string recv_mess_str(recv_buffer);
                 recv_mess_str.assign(recv_buffer);
-                std::cout << "[-] " << recv_mess_str << endl;
+                std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
             }
 
             vector<string> parts = split(recv_mess_str, ";");
@@ -308,7 +308,7 @@ void receiveStartSignal(int connfd){
             exit(0);
         }
         string recv_mess_str(recv_buffer);
-        std::cout << "[-] " << recv_mess_str << endl;
+        std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
         if (recv_mess_str == "start") {
             std::cout << "Game start ...\n";
             return;
@@ -358,7 +358,7 @@ void authenticate(int connfd){
             exit(0);
         }
 
-        std::cout << "[-] " << recv_buffer << endl;
+        std::cout << "\033[1;31m" << "[-] " << recv_buffer << "\033[0m" << endl;
         string recv_mess_str(recv_buffer);
         vector<string> parts = split(recv_mess_str, ";");
 
