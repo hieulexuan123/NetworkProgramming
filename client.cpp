@@ -2,6 +2,7 @@
 #include <thread>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <netinet/tcp.h>
 #include "utilities.h"
 
 using namespace std;
@@ -34,6 +35,9 @@ int main(int argc, char **argv)
         perror("Problem in creating the socket");
         exit(2);
     }
+
+    int flag = 1;
+    setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (char *) &flag, sizeof(int));
         
     //Creation of the socket
     memset(&servaddr, 0, sizeof(servaddr));
@@ -59,13 +63,14 @@ void getFinalResult(int connfd){
 
     std::cout << "Waiting for final result...\n";
 
-    if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+    if(recv(connfd, recv_buffer, MAXLINE, MSG_WAITALL) <= 0) {
         perror("[-] Failed to receive response from server\n");
         exit(0);
     }
     // string recv_mess_str(recv_buffer);
     string recv_mess_str(recv_buffer);
-    std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
+    std::cout << "\033[1;31m " << "[-] " << recv_mess_str << " \033[0m" << endl;
+    // std::cout << "[-] " << recv_mess_str << endl;
     vector<string> parts = split(recv_mess_str, ";");
     if (parts[0]=="FRESULT"){
         int is_winner = stoi(parts[3]);
@@ -90,16 +95,17 @@ bool sendSkipRequest(int connfd, int round){
     memset(recv_buffer, 0, sizeof(recv_buffer));
 
     sprintf(send_buffer, "SKIP;%s", to_string(round).c_str());
-    if (send(connfd, send_buffer, strlen(send_buffer), 0) < 0)
+    if (send(connfd, send_buffer, MAXLINE, 0) < 0)
         perror("[-] Failed to send message to server\n");
 
     memset(recv_buffer, 0, sizeof(recv_buffer));
-    if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+    if(recv(connfd, recv_buffer, MAXLINE, MSG_WAITALL) <= 0) {
         perror("[-] Failed to receive response from server\n");
         exit(0);
     }
     string recv_mess_str(recv_buffer);
-    std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
+    std::cout << "\033[1;31m " << "[-] " << recv_mess_str << " \033[0m" << endl;
+    // std::cout << "[-] " << recv_mess_str << endl;
     vector<string> parts = split(recv_mess_str, ";");
     if (parts[0]=="SKIP_RES"){
         int res = stoi(parts[1]);
@@ -163,12 +169,13 @@ int getInputWithCountdown(std::string &input, int time_limit, bool is_main, int 
 
             if (FD_ISSET(connfd, &readfds)) {
                 memset(recv_buffer, 0, sizeof(recv_buffer));
-                if (recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+                if (recv(connfd, recv_buffer, MAXLINE, MSG_WAITALL) <= 0) {
                     perror("[-] Failed to receive response from server\n");
                     exit(0);
                 }
                 recv_mess_str.assign(recv_buffer);
-                std::cout << "\033[1;31m"<< "\n[-] " << recv_mess_str << "\033[0m" << std::endl;
+                std::cout << "\033[1;31m "<< "\n[-] " << recv_mess_str << " \033[0m" << std::endl;
+                // std::cout << "[-] " << recv_mess_str << std::endl;
                 vector<string> parts = split(recv_mess_str, ";");
                 if (parts[0]=="RRESULT"){
                     if (stoi(parts[2])==2){
@@ -196,14 +203,15 @@ void questionAnswer(int connfd){
         memset(recv_buffer, 0, sizeof(recv_buffer));
 
         std::cout << "Waiting question from server ...\n";
-        if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+        if(recv(connfd, recv_buffer, MAXLINE, MSG_WAITALL) <= 0) {
             perror("[-] Failed to receive response from server\n");
             exit(0);
         }
 
         // string recv_mess_str(recv_buffer);
         recv_mess_str.assign(recv_buffer);
-        std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
+        std::cout << "\033[1;31m " << "[-] " << recv_mess_str << " \033[0m" << endl;
+        // std::cout << "[-] " << recv_mess_str << endl;
         vector<string> parts = split(recv_mess_str, ";");
 
         if (parts[0]=="QUEST"){
@@ -220,18 +228,19 @@ void questionAnswer(int connfd){
             int answered_status = getInputWithCountdown(choice, time_limit, is_main, round, connfd, recv_mess_str);
             if (answered_status==1 && !choice.empty()) {
                 sprintf(send_buffer, "ANS;%s;%s", parts[1].c_str(), choice.c_str());
-                if (send(connfd, send_buffer, strlen(send_buffer), 0) < 0)
+                if (send(connfd, send_buffer, MAXLINE, 0) < 0)
                     perror("[-] Failed to send message to server\n");
                 std::cout << "Submit answer successfully.\n";
 
                 memset(recv_buffer, 0, sizeof(recv_buffer));
-                if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+                if(recv(connfd, recv_buffer, MAXLINE, MSG_WAITALL) <= 0) {
                     perror("[-] Failed to receive response from server\n");
                     exit(0);
                 }
                 // string recv_mess_str(recv_buffer);
                 recv_mess_str.assign(recv_buffer);
-                std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
+                std::cout << "\033[1;31m " << "[-] " << recv_mess_str << " \033[0m" << endl;
+                // std::cout << "[-] " << recv_mess_str << endl;
                 vector<string> parts = split(recv_mess_str, ";");
 
                 if (parts[0]=="ANS_RES"){
@@ -249,14 +258,15 @@ void questionAnswer(int connfd){
             std::cout << "Waiting result from server...\n";
             if (answered_status!=3){
                 memset(recv_buffer, 0, sizeof(recv_buffer));
-                if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+                if(recv(connfd, recv_buffer, MAXLINE, MSG_WAITALL) <= 0) {
                     perror("[-] Failed to receive response from server\n");
                     exit(0);
                 }
 
                 // string recv_mess_str(recv_buffer);
                 recv_mess_str.assign(recv_buffer);
-                std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
+                std::cout << "\033[1;31m " << "[-] " << recv_mess_str << " \033[0m" << endl;
+                // std::cout << "[-] " << recv_mess_str << endl;
             }
 
             vector<string> parts = split(recv_mess_str, ";");
@@ -303,12 +313,13 @@ void receiveStartSignal(int connfd){
     std::cout << "Waiting server to start game ...\n";
     while (true){
         memset(recv_buffer, 0, sizeof(recv_buffer));
-        if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+        if(recv(connfd, recv_buffer, MAXLINE, MSG_WAITALL) <= 0) {
             perror("[-] Failed to receive response from server\n");
             exit(0);
         }
         string recv_mess_str(recv_buffer);
-        std::cout << "\033[1;31m" << "[-] " << recv_mess_str << "\033[0m" << endl;
+        std::cout << "\033[1;31m " << "[-] " << recv_mess_str << " \033[0m" << endl;
+        // std::cout << "[-] " << recv_mess_str << endl;
         if (recv_mess_str == "start") {
             std::cout << "Game start ...\n";
             return;
@@ -334,7 +345,7 @@ void authenticate(int connfd){
             cin >> username;
             std::cout << "Enter password: ";
             cin >> password;
-
+            memset(send_buffer, 0, sizeof(send_buffer));
             sprintf(send_buffer, "REGIS;%s;%s", username.c_str(), password.c_str());
         } else if (choice=="2"){
             std::cout << "Log in\n";
@@ -348,17 +359,18 @@ void authenticate(int connfd){
             continue;
         }
     
-        if(send(connfd, send_buffer, MAXLINE,0) < 0) {
+        if(send(connfd, send_buffer, MAXLINE, 0) < 0) {
             perror("[-] Failed to send message to server\n");
             exit(0);
         }
         memset(recv_buffer, 0, sizeof(recv_buffer));
-        if(recv(connfd, recv_buffer, MAXLINE, 0) <= 0) {
+        if(recv(connfd, recv_buffer, MAXLINE, MSG_WAITALL) <= 0) {
             perror("[-] Failed to receive response from server\n");
             exit(0);
         }
 
-        std::cout << "\033[1;31m" << "[-] " << recv_buffer << "\033[0m" << endl;
+        std::cout << "\033[1;31m " << "[-] " << recv_buffer << " \033[0m" << endl;
+        // std::cout << "[-] " << recv_buffer << endl;
         string recv_mess_str(recv_buffer);
         vector<string> parts = split(recv_mess_str, ";");
 
