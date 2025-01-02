@@ -99,11 +99,14 @@ int main (int argc, char **argv)
                 cout << "Starting game...\n";
                 game.is_start = true;
                 
-                char send_msg[] = "start";
+                string send_msg = "start";
                 for (int i=0; i<player_list.size(); i++){
                     //Only send "start" message to logged in players
                     if (player_list[i]->is_logged_in){
-                        if (send(player_list[i]->connfd, send_msg, strlen(send_msg), 0) < 0)
+                        char send_buffer[MAXLINE];
+                        memset(send_buffer, 0, sizeof(send_buffer));
+                        strcpy(send_buffer, send_msg.c_str());
+                        if (send(player_list[i]->connfd, send_buffer, MAXLINE, 0) < 0)
                             perror("[-] Failed to send message to client\n");
                     }
                 }
@@ -164,8 +167,10 @@ void broadcastQuest(string question_text, vector<string> answer_texts, int round
             for (string answer_text : answer_texts){
                 send_msg += ";" + answer_text;
             }
-
-            if (send(player_list[i]->connfd, send_msg.c_str(), send_msg.length(), 0) < 0)
+            char send_buffer[MAXLINE];
+            memset(send_buffer, 0, sizeof(send_buffer));
+            strcpy(send_buffer, send_msg.c_str());
+            if (send(player_list[i]->connfd, send_buffer, MAXLINE, 0) < 0)
                 perror("[-] Failed to send message to client\n");
         }
     }
@@ -279,8 +284,11 @@ bool broadcastRoundResult(int round, int num_remain_questions){
                 cout << "[-] " << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
                 send_msg = "RRESULT;" + to_string(user_status) + ";" + to_string(round_status) + ";" + to_string(game_status) + ";" + to_string(player->point);
                 
+                char send_buffer[MAXLINE];
+                memset(send_buffer, 0, sizeof(send_buffer));
+                strcpy(send_buffer, send_msg.c_str());
                 //Send result to clients
-                if (send(player->connfd, send_msg.c_str(), send_msg.length(), 0) < 0)
+                if (send(player->connfd, send_buffer, MAXLINE, 0) < 0)
                     perror("[-] Failed to send message to client\n");
 
                 //Reset answer
@@ -331,8 +339,11 @@ bool broadcastRoundResult(int round, int num_remain_questions){
                     cout << "[-] " << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
                     send_msg = "RRESULT;" + to_string(user_status) + ";" + to_string(round_status) + ";" + to_string(game_status) + ";" + to_string(player->point);
                     
+                    char send_buffer[MAXLINE];
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    strcpy(send_buffer, send_msg.c_str());
                     //Send result to clients
-                    if (send(player->connfd, send_msg.c_str(), send_msg.length(), 0) < 0)
+                    if (send(player->connfd, send_buffer, MAXLINE, 0) < 0)
                         perror("[-] Failed to send message to client\n");
 
                     //Reset answer
@@ -372,8 +383,12 @@ bool broadcastRoundResult(int round, int num_remain_questions){
 
                     cout << "[-] " << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
                     send_msg = "RRESULT;" + to_string(user_status) + ";" + to_string(round_status) + ";" + to_string(game_status) + ";" + to_string(player->point);
+                    
+                    char send_buffer[MAXLINE];
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    strcpy(send_buffer, send_msg.c_str());
                     //Send result to clients
-                    if (send(player->connfd, send_msg.c_str(), send_msg.length(), 0) < 0)
+                    if (send(player->connfd, send_buffer, MAXLINE, 0) < 0)
                         perror("[-] Failed to send message to client\n");
 
                     //Reset answer
@@ -418,8 +433,11 @@ bool broadcastRoundResult(int round, int num_remain_questions){
                     cout << "[-] " << player->name << ", point: " << to_string(player->point) << ", status: " << to_string(user_status) << endl;
                     send_msg = "RRESULT;" + to_string(user_status) + ";" + to_string(round_status) + ";" + to_string(game_status) + ";" + to_string(player->point);
                     
+                    char send_buffer[MAXLINE];
+                    memset(send_buffer, 0, sizeof(send_buffer));
+                    strcpy(send_buffer, send_msg.c_str());
                     //Send result to clients
-                    if (send(player->connfd, send_msg.c_str(), send_msg.length(), 0) < 0)
+                    if (send(player->connfd, send_buffer, MAXLINE, 0) < 0)
                         perror("[-] Failed to send message to client\n");
 
                     //Reset answer
@@ -521,7 +539,10 @@ void broadcastFinalResult(int num_remain_questions){
                 send_msg = base_send_msg + ";2";
             }
         }
-        if (send(player->connfd, send_msg.c_str(), send_msg.length(), 0) < 0)
+        char send_buffer[MAXLINE];
+        memset(send_buffer, 0, sizeof(send_buffer));
+        strcpy(send_buffer, send_msg.c_str());
+        if (send(player->connfd, send_buffer, MAXLINE, 0) < 0)
             perror("[-] Failed to send message to client\n");
     }
 }
@@ -534,7 +555,7 @@ void handleClient(struct ClientInfo * player){
     while (true){
         memset(send_buffer, 0, sizeof(send_buffer));
         memset(recv_buffer, 0, sizeof(recv_buffer));
-        int recv_code = recv(connfd, recv_buffer, MAXLINE,0);
+        int recv_code = recv(connfd, recv_buffer, MAXLINE, MSG_WAITALL);
 
         //player disconnects
         if (recv_code == 0) {
@@ -556,7 +577,7 @@ void handleClient(struct ClientInfo * player){
         string recv_mess_str(recv_buffer);
         string send_mess_str;
         vector<string> parts = split(recv_mess_str, ";");
-        cout << "\033[1;31m" << recv_mess_str << "\033[0m" << endl;
+        cout << "\033[1;31m " << recv_mess_str << " \033[0m" << endl;
         
         if (parts[0]=="REGIS"){
             send_mess_str = handleRegisRequest(parts);
@@ -570,12 +591,11 @@ void handleClient(struct ClientInfo * player){
             send_mess_str = "FAIL;wrong_format";
         }
     
-        strcpy(send_buffer, send_mess_str.c_str());
+        strcpy(send_buffer, send_mess_str.c_str()); 
         if (send(connfd, send_buffer, MAXLINE, 0) < 0) {
             perror("[-]Failed to send response\n");
         }
     }
-    
     
     close(connfd);
 }
